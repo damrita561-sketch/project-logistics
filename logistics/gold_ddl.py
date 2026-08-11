@@ -1,0 +1,36 @@
+# Databricks notebook source
+# MAGIC %sql
+# MAGIC create schema gold.EDW;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE gold.EDW.DIM_APPOINTMENT_DATA (
+# MAGIC     APPOINTMENT_DATA_KEY INT,
+# MAGIC     YARD_NAME            STRING,
+# MAGIC     SALES_ORDER_ID       STRING,
+# MAGIC     CARRIER_NAME         STRING,
+# MAGIC     ADDED_BY             STRING,
+# MAGIC     ADDED_ON             TIMESTAMP,
+# MAGIC     MODIFIED_BY          STRING,
+# MAGIC     MODIFIED_ON          TIMESTAMP
+# MAGIC );
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE gold.EDW.FACT_SALES
+# MAGIC  (
+# MAGIC     SALES_KEY       INT,
+# MAGIC     YARD_ID         STRING,
+# MAGIC     APPOINTMENT_DATA_KEY        INT,
+# MAGIC     COMMODITY_NAME  STRING,
+# MAGIC     PRICE           FLOAT,
+# MAGIC     SELL_PRICE      FLOAT,
+# MAGIC     INVOICE_TOTAL   FLOAT,
+# MAGIC     ADDED_BY        STRING,
+# MAGIC     ADDED_ON        TIMESTAMP,
+# MAGIC     MODIFIED_BY     STRING,
+# MAGIC     MODIFIED_ON     TIMESTAMP
+# MAGIC );
