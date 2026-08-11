@@ -1,0 +1,110 @@
+{
+	"name": "Pl_Logistics_Data_Process",
+	"properties": {
+		"activities": [
+			{
+				"name": "Act-Notebook_Execute_Load_bronze_initial_full_load",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/premmohanty63@gmail.com/logistics/load_bronze_initial_full_load",
+					"baseParameters": {
+						"masterPipelineRunId": {
+							"value": "@pipeline().parameters.P_Master_Pipeline_Run_id",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "Is_logistic_adb",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Act-Notebook_Bronze_To_Silver",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Act-Notebook_Execute_Load_bronze_initial_full_load",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/premmohanty63@gmail.com/logistics/Bronze_to_silver",
+					"baseParameters": {
+						"masterPipelineRunId": {
+							"value": "@pipeline().parameters.P_Master_Pipeline_Run_id",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "Is_logistic_adb",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Act-Notebook_Slver_To_Gold",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Act-Notebook_Bronze_To_Silver",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/premmohanty63@gmail.com/logistics/silver_to_gold",
+					"baseParameters": {
+						"masterPipelineRunId": {
+							"value": "@pipeline().parameters.P_Master_Pipeline_Run_id",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "Is_logistic_adb",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"P_Master_Pipeline_Run_id": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Csv_files_data_process"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-08T21:56:01Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

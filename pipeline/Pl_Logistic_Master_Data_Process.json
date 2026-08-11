@@ -1,0 +1,268 @@
+{
+	"name": "Pl_Logistic_Master_Data_Process",
+	"properties": {
+		"activities": [
+			{
+				"name": "Act_Set_Pipeline_Run_Id",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "V_Pipeline_Start_Time",
+					"value": {
+						"value": "@utcNow()",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Act_Set_Master_Pipeline_Run_Id",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "V_Master_Pipeline_Run_Id",
+					"value": {
+						"value": "@pipeline().RunId",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Act_Lookup_Get_Is_Last_Run_Completed",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Act_Set_Pipeline_Run_Id",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Act_Set_Master_Pipeline_Run_Id",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select is_last_run_completed from METADATA.PIPELINE_RUN_STATUS where PIPELINE_NAME = '@{pipeline().Pipeline}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Is_Logistics_azure_sql",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Act_Check_Is_Last_Run_Completed",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Act_Lookup_Get_Is_Last_Run_Completed",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('Act_Lookup_Get_Is_Last_Run_Completed').output.firstRow.is_last_run_completed, true )",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Act_Check_Is_Last_Run_Completed_Flag_To_0",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "Is_Logistic_Azure_Sql_db",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "UPDATE metadata.pipeline_run_status SET is_last_run_completed = 0 where PIPELINE_NAME = '@{pipeline().Pipeline}'",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "Act-Procedusre-Log-Pipeline-Audit",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Act-Execute-Pl-Data-process",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[metadata].[SP_INSERT_PIPELINE_AUDIT_LOG]",
+								"storedProcedureParameters": {
+									"PIPELINE_END_TIME": {
+										"value": {
+											"value": "@utcNow()",
+											"type": "Expression"
+										},
+										"type": "DateTime"
+									},
+									"PIPELINE_NAME": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PIPELINE_RUN_ID": {
+										"value": {
+											"value": "@variables('V_Master_Pipeline_Run_Id')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PIPELINE_START_TIME": {
+										"value": {
+											"value": "@variables('V_Pipeline_Start_Time')",
+											"type": "Expression"
+										},
+										"type": "DateTime"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "Is_Logistic_Azure_Sql_db",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "Act_Check_Is_Last_Run_Completed_Flag_To_1_copy1",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "Act-Procedusre-Log-Pipeline-Audit",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "Is_Logistic_Azure_Sql_db",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "UPDATE metadata.pipeline_run_status SET is_last_run_completed = 1 where PIPELINE_NAME = '@{pipeline().Pipeline}'",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "Act-Execute-Pl-Data-process",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Act_Check_Is_Last_Run_Completed_Flag_To_0",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Pl_Logistics_Data_Process",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"P_Master_Pipeline_Run_id": {
+										"value": "@variables('V_Master_Pipeline_Run_Id')",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"V_Pipeline_Start_Time": {
+				"type": "String"
+			},
+			"V_Master_Pipeline_Run_Id": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Csv_files_data_process"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-08T10:00:12Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
